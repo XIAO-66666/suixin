@@ -1,0 +1,20 @@
+{
+  "name": "随心",
+  "short_name": "随心",
+  "description": "不知道做什么的时候，就让一点点运气帮你选。",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff8fb",
+  "theme_color": "#fff8fb",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

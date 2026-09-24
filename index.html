@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#fff8fb">
+<title>随心</title>
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="随心">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+
+</head>
+<body>
+<div class="app">
+  <main class="pages">
+    <!-- 今天 -->
+    <section class="page active" id="page-today">
+      <div class="page-head">
+        <div>
+          <button id="todayDate" class="date-btn" type="button">今天 · 9月23日</button>
+          <input id="datePicker" type="date" aria-label="选择日期">
+          <button id="backToday" class="back-today" type="button">回到今天</button>
+          <h1 id="mainTitle">随心</h1>
+        </div>
+        <button id="soundBtn" class="round-btn" aria-label="轻音效">🔔</button>
+      </div>
+
+      <p class="intro">不知道做什么的时候，<br>就让一点点运气帮你选。</p>
+
+      <div class="pet-area" id="petArea">
+        <div class="spark s1">✦</div><div class="spark s2">·</div><div class="spark s3">✧</div>
+        <div class="pet-shadow"></div>
+        <div class="pet" id="pet" role="button" aria-label="小宠物">
+          <div class="ear left"></div><div class="ear right"></div>
+          <div class="body">
+            <div class="face">
+              <div class="eye left-eye"><i></i></div>
+              <div class="eye right-eye"><i></i></div>
+              <div class="blush left-blush"></div><div class="blush right-blush"></div>
+              <div class="mouth">⌣</div>
+            </div>
+          </div>
+          <div class="tail"></div>
+        </div>
+        <div class="pet-bubble" id="petBubble"></div>
+        <div class="pet-tip" id="petTip">点点我试试～ 🌷</div>
+        <div class="pet-actions">
+          <button id="petPlay" type="button">🎮 陪我玩</button>
+          <button id="petFeed" type="button">🍪 投喂</button>
+        </div>
+      </div>
+
+      <div class="draw-source">
+        <div class="draw-source-title">这次想抽哪一种？</div>
+        <div class="draw-source-options">
+          <button class="source-option" data-source="mine" type="button">🌱 我的事情</button>
+          <button class="source-option" data-source="inspiration" type="button">✨ 随机灵感</button>
+          <button class="source-option active" data-source="all" type="button">🌈 全部一起</button>
+        </div>
+      </div>
+
+      <div class="card-wrap">
+        <button id="drawCard" class="draw-card">
+          <span class="card-spark">✦</span>
+          <span class="card-icon">🃏</span>
+          <strong>随心选一个</strong>
+          <small>让一点点运气替你做个小决定</small>
+          <span class="card-spark right">✧</span>
+        </button>
+      </div>
+
+      <div class="want-row">
+        <span>现在想要什么？</span>
+        <button class="want-chip" data-filter="rest">🛋️ 躺一会儿</button>
+        <button class="want-chip" data-filter="outside">🌿 出去走走</button>
+        <button class="want-chip" data-filter="fun">🎮 开心一下</button>
+        <button class="want-chip" data-filter="useful">📚 做点正事</button>
+      </div>
+    </section>
+
+    <!-- 我的事情 -->
+    <section class="page" id="page-things">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">🌱 给自己留一点选择</div>
+          <h1>我的事情</h1>
+        </div>
+      </div>
+      <p class="sub">想做的事情可以放在这里。<br>它们只是选择，不是待办清单。</p>
+
+      <div class="add-box">
+        <input id="taskInput" placeholder="比如：去散步、看一集番……">
+        <select id="category">
+          <option value="want">🌱 想做</option>
+          <option value="small">☕ 很小的事</option>
+          <option value="try">🌈 想尝试</option>
+          <option value="study">📚 学习</option>
+          <option value="fun">🎮 娱乐</option>
+          <option value="life">🏠 生活</option>
+          <option value="selfcare">💕 对自己好一点</option>
+        </select>
+        <button id="addBtn">＋ 添加</button>
+      </div>
+
+      <div class="thing-count" id="countText">0 件</div>
+      <div id="taskList" class="task-list"></div>
+
+      <div class="tiny-note">♡ 今天不想做也没关系，留给以后慢慢选。</div>
+    </section>
+
+    <!-- 记录 -->
+    <section class="page" id="page-history">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">📖 以前的小选择</div>
+          <h1>记录</h1>
+        </div>
+      </div>
+      <p class="sub">这里会记住你抽到过什么。<br>只是记录，不是打卡。</p>
+      <div id="historyList" class="history-list"></div>
+    </section>
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab active" data-page="today"><span>🏠</span><b>今天</b></button>
+    <button class="tab" data-page="things"><span>🌱</span><b>我的事情</b></button>
+    <button class="tab" data-page="history"><span>📖</span><b>记录</b></button>
+  </nav>
+</div>
+
+<div id="result" class="result hidden">
+  <div class="result-card">
+    <button id="closeResult" class="result-close">×</button>
+    <div class="mini-card">🃏</div>
+    <div class="result-kicker">随心替你选好了</div>
+    <h2 id="resultTitle">今天就做这个吧</h2>
+    <p>不用纠结啦，今天的小选择就是它。</p>
+    <div id="resultTag" class="tag"></div>
+    <div class="result-actions">
+      <button id="againBtn" class="secondary">↻ 再抽一张</button>
+      <button id="doneBtn" class="primary">好啦，就它啦 🌷</button>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+<script>
+if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {})); }
+</script>
+</body>
+</html>
