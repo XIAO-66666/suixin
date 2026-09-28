@@ -1,4 +1,4 @@
-const CACHE_NAME = 'suixin-v1';
+const CACHE_NAME = 'suixin-v5';
 const APP_SHELL = [
   './',
   './index.html',

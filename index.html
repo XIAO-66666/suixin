@@ -26,7 +26,7 @@
           <button id="backToday" class="back-today" type="button">回到今天</button>
           <h1 id="mainTitle">随心</h1>
         </div>
-        <button id="soundBtn" class="round-btn" aria-label="轻音效">🔔</button>
+        <button id="soundBtn" class="round-btn" aria-label="轻音乐">🔕</button>
       </div>
 
       <p class="intro">不知道做什么的时候，<br>就让一点点运气帮你选。</p>
@@ -93,7 +93,7 @@
       <p class="sub">想做的事情可以放在这里。<br>它们只是选择，不是待办清单。</p>
 
       <div class="add-box">
-        <input id="taskInput" placeholder="比如：去散步、看一集番……">
+        <input id="taskInput" placeholder="在这里输入你想做的事情">
         <select id="category">
           <option value="want">🌱 想做</option>
           <option value="small">☕ 很小的事</option>
@@ -119,8 +119,15 @@
           <div class="eyebrow">📖 以前的小选择</div>
           <h1>记录</h1>
         </div>
+        <button id="historySelectBtn" class="history-select-btn" type="button">多选</button>
       </div>
       <p class="sub">这里会记住你抽到过什么。<br>只是记录，不是打卡。</p>
+      <div id="historyBatchBar" class="history-batch-bar hidden">
+        <button type="button" data-batch-action="all">全选</button>
+        <button type="button" data-batch-action="done">已完成</button>
+        <button type="button" data-batch-action="delete">删除</button>
+        <span id="historySelectedCount">已选 0 条</span>
+      </div>
       <div id="historyList" class="history-list"></div>
     </section>
   </main>
