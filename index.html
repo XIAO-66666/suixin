@@ -4,8 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#fff8fb">
-<title>随心</title>
-<link rel="stylesheet" href="style.css">
+<title>随心 · 今天做什么？</title>
+<meta name="description" content="不催促、不打卡。让随心和一只温柔的小伙伴，帮你找到今天想做的一件小事。">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css?v=18">
 <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,7 +17,8 @@
 
 </head>
 <body>
-<div class="app">
+<div id="appLoading" class="app-loading" role="status">随心正在打开，等你一起开始今天的小日子 🌷</div>
+<div class="app hidden">
   <main class="pages">
     <!-- 今天 -->
     <section class="page active" id="page-today">
@@ -26,11 +29,14 @@
           <button id="backToday" class="back-today" type="button">回到今天</button>
           <h1 id="mainTitle">随心</h1>
         </div>
-        <button id="soundBtn" class="round-btn" aria-label="轻音乐">🔕</button>
+        <div class="account-tools"><button id="accountBtn" class="account-btn">登录</button><button id="soundBtn" class="round-btn" aria-label="轻音乐">🔕</button></div>
       </div>
 
-      <p class="intro">不知道做什么的时候，<br>就让一点点运气帮你选。</p>
+      <div class="welcome-badge">普通的日子，也有值得收藏的小事 ✦</div><p class="intro">和小伙伴一起，找一点生活的兴致。<br>今天的你，是什么心情？</p>
 
+      <div class="mood-grid" aria-label="今天的心情">
+        <button data-mood="tired" aria-pressed="false">☁️<span>有点累</span></button><button data-mood="bored" aria-pressed="false">🎈<span>有点无聊</span></button><button data-mood="outside" aria-pressed="false">🌿<span>想出去</span></button><button data-mood="connect" aria-pressed="false">💬<span>想聊聊</span></button>
+      </div><p id="moodReply" class="mood-reply" aria-live="polite">不用想好要做什么，先在这里坐一会儿。</p>
       <div class="pet-area" id="petArea">
         <div class="spark s1">✦</div><div class="spark s2">·</div><div class="spark s3">✧</div>
         <div class="pet-shadow"></div>
@@ -54,7 +60,9 @@
         </div>
       </div>
 
-      <div class="draw-source">
+      <button id="justStay" class="stay-btn">☕ 什么也不做，陪我待一会儿</button>
+      <p id="petStatus" class="pet-status"></p>
+      <details class="source-details"><summary>想抽自己的事情？调整灵感来源</summary><div class="draw-source">
         <div class="draw-source-title">这次想抽哪一种？</div>
         <div class="draw-source-options">
           <button class="source-option" data-source="mine" type="button">🌱 我的事情</button>
@@ -63,16 +71,18 @@
         </div>
       </div>
 
+      </details>
       <div class="card-wrap">
         <button id="drawCard" class="draw-card">
           <span class="card-spark">✦</span>
           <span class="card-icon">🃏</span>
-          <strong>随心选一个</strong>
-          <small>让一点点运气替你做个小决定</small>
+          <strong>给今天一点小灵感</strong>
+          <small>不用完成很多，一件小事就很好</small>
           <span class="card-spark right">✧</span>
         </button>
       </div>
 
+      <p id="filterHint" class="filter-hint">所有心情都可以，选一个小小的开始</p>
       <div class="want-row">
         <span>现在想要什么？</span>
         <button class="want-chip" data-filter="rest">🛋️ 躺一会儿</button>
@@ -82,6 +92,33 @@
       </div>
     </section>
 
+    <section class="page" id="page-life">
+      <div class="eyebrow">OUR LITTLE DAYS</div><h1>我的小日子</h1><p class="sub">做过的小事，会把这里慢慢变成你的样子。</p>
+      <div class="little-room" aria-label="随经历变化的小房间"><div class="room-window">☀️<span>窗外总有好天气</span></div><div class="room-pet"><div class="room-buddy"><i></i><b>⌣</b></div><span>小伙伴的家</span></div><div id="roomItems" class="room-items"></div></div>
+      <p id="roomCaption" class="room-caption" aria-live="polite"></p><div id="roomCollection" class="room-collection"></div>
+      <div class="journal-heading"><h2>那些小小的瞬间</h2><span id="momentCount"></span></div><div id="momentList"></div>
+      <button id="writeMoment" class="wide-button">＋ 留下今天的一句话</button>
+    </section>
+    <section class="page" id="page-friends">
+      <div class="eyebrow">A LITTLE CLOSER, EVERY DAY</div><h1>朋友之间</h1><p class="sub">说句话，送张卡。让惦记有个落脚的地方。</p>
+      <div class="social-tabs"><button data-social-view="people" aria-pressed="false">🌷 好友</button><button data-social-view="inbox" aria-pressed="false">💬 消息<span id="inboxCount"></span></button><button data-social-view="together" aria-pressed="false">🐾 一起</button><button data-social-view="compose" aria-pressed="true">💌 写卡片</button></div>
+      <p id="socialStatus" class="social-status" role="status" aria-live="polite"></p>
+      <div id="guestSocialNotice" class="account-notice"><strong>把心意，直接送给好友</strong><p>登录后可以交换好友码、互发卡片和消息。不登录也能制作卡片，发到应用外。</p><button id="loginForFriends" class="wide-button">登录 / 注册</button></div>
+      <div id="accountSocialPanel" class="hidden">
+        <div class="account-summary"><div class="person-avatar">🌷</div><div class="person-info"><strong id="myNickname"></strong><p>我的好友码 <b id="myFriendCode"></b></p></div><button id="copyMyCode">复制</button></div>
+        <div class="account-options"><button id="bindGuestRecords">合并这台设备的游客记录</button><button id="accountSettings">账号与隐私</button><button id="logoutAccount">退出登录</button></div><p class="social-local-note">小日子会同步到账号，私人记录默认仅自己可见。只有主动发送的卡片和消息会分享给好友。</p>
+        <div id="friendPeople"><h2 class="social-heading">添加一位朋友</h2><form id="addFriendForm" class="add-friend-form"><label class="sr-only" for="friendCodeInput">对方的好友码</label><input id="friendCodeInput" maxlength="10" minlength="10" required autocomplete="off" placeholder="输入对方的 10 位好友码"><button id="addFriendSubmit">发送申请</button></form><p id="addFriendStatus" class="social-status" role="status"></p><h2 class="social-heading">好友申请</h2><div id="requestList"></div><div class="social-heading-row"><h2 class="social-heading">我的好友</h2><button id="refreshFriends">刷新</button></div><div id="friendList"></div></div>
+        <div id="friendInbox" class="hidden"><div id="conversationList"></div><div id="chatPanel" class="hidden"><div class="chat-heading"><button id="backConversations">‹ 消息</button><h2 id="chatName"></h2></div><button id="loadOlderMessages" class="share-btn hidden">更早的消息</button><div id="chatMessages" class="chat-messages" aria-label="好友对话"></div><p id="chatStatus" class="social-status" role="status"></p><form id="messageForm" class="message-form"><label class="sr-only" for="chatInput">发送消息</label><textarea id="chatInput" maxlength="500" required rows="2" placeholder="想和朋友说点什么？"></textarea><button id="sendMessage" type="submit">发送</button></form></div></div>
+      </div>
+      <div id="friendTogether" class="hidden"></div>
+      <div id="friendCompose"><h2 class="social-heading">给朋友折一张小卡片</h2>
+      <div class="letter-preview"><span>TO SOMEONE SPECIAL</span><div>💌</div><h2>有件小事，想和你一起</h2><p>一杯饮料，一次散步，一点惦记。</p></div>
+      <label class="field-label" for="friendMessage">想邀请朋友做什么？</label><textarea id="friendMessage" maxlength="120" placeholder="这周找个傍晚，一起去散步吧。"></textarea>
+      <label class="field-label" for="friendName">留下你的称呼（选填）</label><input id="friendName" maxlength="20" placeholder="一个想见你的朋友">
+      <button id="makeFriendCard" class="wide-button">生成应用外分享卡片 ✦</button><button id="sendInAppCard" class="share-btn">💌 发送给应用内好友</button>
+      <div id="friendOutput" class="hidden"><p class="sub">卡片准备好了。链接包含你写的文字，请只写愿意分享的内容。</p><label for="friendLink" class="field-label">复制链接发给朋友</label><textarea id="friendLink" readonly></textarea><p id="friendShareHint" class="sub" role="status"></p><button id="sendFriendCard" class="wide-button">分享这份小邀请 ↗</button><div class="friend-share-actions"><button id="copyFriendCard" class="share-btn">复制分享内容</button><button id="previewFriendCard" class="share-btn">自己拆开看看</button></div></div>
+      <p class="tiny-note">应用外卡片不需要登录；应用内卡片仅好友可接收。</p></div>
+    </section>
     <!-- 我的事情 -->
     <section class="page" id="page-things">
       <div class="page-head">
@@ -93,8 +130,8 @@
       <p class="sub">想做的事情可以放在这里。<br>它们只是选择，不是待办清单。</p>
 
       <div class="add-box">
-        <input id="taskInput" placeholder="在这里输入你想做的事情">
-        <select id="category">
+        <input id="taskInput" maxlength="80" aria-label="想做的事情" placeholder="在这里输入你想做的事情">
+        <select id="category" aria-label="事情分类">
           <option value="want">🌱 想做</option>
           <option value="small">☕ 很小的事</option>
           <option value="try">🌈 想尝试</option>
@@ -121,7 +158,7 @@
         </div>
         <button id="historySelectBtn" class="history-select-btn" type="button">多选</button>
       </div>
-      <p class="sub">这里会记住你抽到过什么。<br>只是记录，不是打卡。</p>
+      <p class="sub">这里会记住你决定尝试的小选择。<br>只是记录，不是打卡。</p>
       <div id="historyBatchBar" class="history-batch-bar hidden">
         <button type="button" data-batch-action="all">全选</button>
         <button type="button" data-batch-action="done">已完成</button>
@@ -129,18 +166,22 @@
         <span id="historySelectedCount">已选 0 条</span>
       </div>
       <div id="historyList" class="history-list"></div>
+      <div class="data-panel"><strong>把小选择好好收着</strong><p>记录保存在当前设备的浏览器里。换手机或清理浏览器前，请先导出备份。</p><div class="utility-actions"><button id="exportBtn">导出备份</button><button id="importBtn">导入备份</button></div><input id="importFile" type="file" accept=".json,application/json" hidden></div>
     </section>
   </main>
 
+  <div class="app-footer"><span>不催促，不打卡，慢慢选。</span><button id="installBtn">添加到手机</button><a href="privacy.html">隐私说明</a></div>
   <nav class="tabbar">
     <button class="tab active" data-page="today"><span>🏠</span><b>今天</b></button>
+    <button class="tab" data-page="life"><span>🪴</span><b>小日子</b></button>
+    <button class="tab" data-page="friends"><span>💌</span><b>朋友</b><i id="friendBadge" class="friend-badge hidden"></i></button>
     <button class="tab" data-page="things"><span>🌱</span><b>我的事情</b></button>
     <button class="tab" data-page="history"><span>📖</span><b>记录</b></button>
   </nav>
 </div>
 
 <div id="result" class="result hidden">
-  <div class="result-card">
+  <div class="result-card" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
     <button id="closeResult" class="result-close">×</button>
     <div class="mini-card">🃏</div>
     <div class="result-kicker">随心替你选好了</div>
@@ -151,12 +192,29 @@
       <button id="againBtn" class="secondary">↻ 再抽一张</button>
       <button id="doneBtn" class="primary">好啦，就它啦 🌷</button>
     </div>
+    <button id="shareBtn" class="share-btn">把这份小灵感分享给朋友 ↗</button>
   </div>
 </div>
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+<div id="undoBar" class="undo-bar hidden" role="status">已删除 <button id="undoBtn">撤销</button></div>
 
-<script src="script.js"></script>
+<dialog id="momentDialog" class="experience-dialog" aria-labelledby="momentTitle"><form id="momentForm"><button type="button" class="dialog-close" id="closeMoment" aria-label="关闭">×</button><div class="eyebrow">KEEP A LITTLE MOMENT</div><h2 id="momentTitle">这一刻，想留下什么？</h2><p id="momentContext" class="sub"></p><label class="field-label" for="momentNote">一句话就好，也可以只选一个心情</label><textarea id="momentNote" maxlength="280" placeholder="例如：风很舒服，想下次再走这条路。"></textarea><div class="moment-moods" aria-label="此刻心情"><button type="button" data-memory-mood="舒服" aria-pressed="false">🍃 舒服</button><button type="button" data-memory-mood="开心" aria-pressed="false">☀️ 开心</button><button type="button" data-memory-mood="平静" aria-pressed="false">☁️ 平静</button><button type="button" data-memory-mood="一般般" aria-pressed="false">🌧️ 一般般</button></div><button class="wide-button" type="submit">收好这个瞬间</button><p class="tiny-note">没有感想也没关系，随时可以回来写。</p></form></dialog>
+<dialog id="receivedCard" class="experience-dialog" aria-labelledby="receivedTitle"><button id="closeReceived" class="dialog-close" aria-label="关闭">×</button><div class="letter-preview"><span>JUST FOR YOU</span><div>💌</div><h2 id="receivedTitle">有人给你留了一张卡</h2><p id="receivedFrom"></p></div><button id="revealCard" class="wide-button">拆开这份小心意</button><p id="receivedText" class="received-text hidden"></p><button id="replyCard" class="share-btn hidden">我也写一张</button></dialog>
+<dialog id="shareDialog" class="experience-dialog" aria-labelledby="shareDialogTitle"><button id="closeShareDialog" class="dialog-close" aria-label="关闭">×</button><h2 id="shareDialogTitle">把小心意带给朋友</h2><p id="shareHelp" class="sub"></p><label class="field-label" for="shareCopyText">可复制的分享内容</label><textarea id="shareCopyText" readonly rows="6"></textarea><button id="copyShareText" class="wide-button">复制内容</button><p id="shareCopyStatus" class="sub" role="status" aria-live="polite"></p></dialog>
+<dialog id="authDialog" class="experience-dialog" aria-labelledby="authTitle"><button id="closeAuth" class="dialog-close" aria-label="关闭">×</button><form id="authForm"><div class="eyebrow">YOUR LITTLE CORNER</div><h2 id="authTitle">欢迎回来</h2><label class="field-label" for="authUsername">用户名</label><input id="authUsername" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" autocomplete="username" autocapitalize="none" placeholder="3–24 位英文、数字或下划线"><div id="nicknameField" class="hidden"><label class="field-label" for="authNickname">朋友看到的昵称</label><input id="authNickname" maxlength="20" autocomplete="nickname" placeholder="怎么称呼你？"></div><label class="field-label" for="authPassword">密码</label><input id="authPassword" type="password" required minlength="10" maxlength="128" autocomplete="current-password" placeholder="至少 10 位字符"><p id="authError" class="auth-error" role="alert"></p><button id="authSubmit" class="wide-button" type="submit">登录随心</button><button id="authSwitch" class="share-btn" type="button">还没有账号？注册一个</button><button type="button" id="forgotPassword" class="share-btn">忘记密码？使用恢复码找回</button><p class="tiny-note">注册后请妥善保存恢复码。<br>注册前请阅读 <a href="privacy.html" target="_blank" rel="noopener">隐私说明</a>。</p></form></dialog>
+<dialog id="pickFriendDialog" class="experience-dialog" aria-labelledby="pickFriendTitle"><button id="closePickFriend" class="dialog-close" aria-label="关闭">×</button><h2 id="pickFriendTitle">把小卡片送给谁？</h2><p id="pickCardPreview" class="card-send-preview"></p><div id="pickFriendList"></div><p id="pickFriendStatus" class="auth-error" role="status"></p></dialog>
+<script src="bootstrap.js?v=18" defer></script>
 <script>
-if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {})); }
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('./sw.js');
+      const offerUpdate = () => { if (reg.waiting && navigator.serviceWorker.controller) { const btn = document.createElement('button'); btn.className='update-banner'; btn.textContent='随心有新版本，点这里更新 ✦'; btn.onclick=()=>reg.waiting.postMessage({type:'SKIP_WAITING'}); document.body.append(btn); } };
+      offerUpdate(); reg.addEventListener('updatefound', () => { const worker=reg.installing; worker.addEventListener('statechange',()=>{ if(worker.state==='installed') offerUpdate(); }); });
+      navigator.serviceWorker.addEventListener('controllerchange',()=>{ if(navigator.serviceWorker.controller) location.reload(); });
+    } catch(error) { console.warn('离线功能暂不可用', error); }
+  });
+}
 </script>
 </body>
 </html>

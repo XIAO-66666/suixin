@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>打开单人养宠 · 随心</title><style>body{margin:0;background:#fff8fb;color:#835a70;font:15px/1.9 system-ui;text-align:center}main{max-width:390px;margin:20vh auto;padding:28px}a{display:inline-block;background:#bd7495;color:white;padding:12px 24px;border-radius:16px;text-decoration:none}small{display:block;margin:20px 0;color:#a18b97}</style></head><body><main><h1>🐾 单人养宠</h1><p id="status">正在打开新版养宠页面…</p><small>账号和原有记录都会保留。</small><a href="./?view=solo&amp;v=18">直接进入单人养宠</a></main><script>
+(async()=>{
+  try{
+    const registration=await navigator.serviceWorker?.getRegistration('./');
+    if(registration){
+      await Promise.race([registration.update(),new Promise(resolve=>setTimeout(resolve,2000))]);
+      registration.waiting?.postMessage({type:'SKIP_WAITING'});
+    }
+  }catch{}
+  location.replace('./?view=solo&v=18');
+})();
+</script></body></html>

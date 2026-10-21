@@ -1,0 +1,11 @@
+{
+  "name": "suixin",
+  "version": "0.2.0",
+  "private": true,
+  "scripts": {
+    "test": "node verify.cjs",
+    "test:browser": "node browser-check.cjs",
+    "test:cache": "node cache-upgrade-check.cjs"
+  },
+  "devDependencies": {"playwright": "1.62.1"}
+}

@@ -3,6 +3,7 @@ const $$ = (selector) => [...document.querySelectorAll(selector)];
 
 const STORAGE_KEYS = {
   tasks: "todayThings",
+  soloPet: "soloPet",
   history: "todayHistory",
   selectedDate: "todaySelectedDate",
   sound: "todaySound",
@@ -12,6 +13,25 @@ const STORAGE_KEYS = {
 };
 
 const defaults = [
+  {"text": "拍下今天的一束光", "category": "small", "filter": "outside", "emoji": "📷"},
+  {"text": "找一条没走过的小路，散步十分钟", "category": "try", "filter": "outside", "emoji": "🌳"},
+  {"text": "去附近公园坐一会儿", "category": "selfcare", "filter": "outside", "emoji": "🍃"},
+  {"text": "给自己泡一杯热茶", "category": "selfcare", "filter": "rest", "emoji": "🍵"},
+  {"text": "闭上眼睛，慢慢呼吸一分钟", "category": "small", "filter": "rest", "emoji": "☁️"},
+  {"text": "换上舒服的衣服伸个懒腰", "category": "selfcare", "filter": "rest", "emoji": "🛋️"},
+  {"text": "画一只不需要好看的小动物", "category": "try", "filter": "fun", "emoji": "🎨"},
+  {"text": "找一首没听过的歌", "category": "fun", "filter": "fun", "emoji": "🎧"},
+  {"text": "给朋友发一个有趣的表情", "category": "fun", "filter": "fun", "emoji": "💬"},
+  {"text": "用三张照片记录今天", "category": "try", "filter": "fun", "emoji": "📸"},
+  {"text": "清理手机里十张不需要的照片", "category": "life", "filter": "useful", "emoji": "📱"},
+  {"text": "写下脑海里的一个小点子", "category": "study", "filter": "useful", "emoji": "💡"},
+  {"text": "学会一个新的外语单词", "category": "study", "filter": "useful", "emoji": "📚"},
+  {"text": "把明天要用的东西放在一起", "category": "life", "filter": "useful", "emoji": "🎒"},
+  {"text": "给许久没联系的人问声好", "category": "want", "filter": "fun", "emoji": "🌷"},
+  {"text": "为自己准备一份简单的水果", "category": "selfcare", "filter": "rest", "emoji": "🍊"},
+  {"text": "看看天空，找一朵喜欢的云", "category": "small", "filter": "outside", "emoji": "☁️"},
+  {"text": "整理一个小抽屉，只做五分钟", "category": "life", "filter": "useful", "emoji": "🧺"},
+
   { text: "出去散步十分钟", category: "small", filter: "outside", emoji: "🌿" },
   { text: "看一集喜欢的番", category: "fun", filter: "fun", emoji: "🎮" },
   { text: "整理一下桌面", category: "life", filter: "useful", emoji: "🧹" },
@@ -43,9 +63,13 @@ const categoryFilters = {
 
 const makeId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
+function storageKey(key) {
+  return window.SUIXIN_USER ? `suixin.user.${window.SUIXIN_USER.id}.${key}` : key;
+}
+
 function readJson(key, fallback) {
   try {
-    const value = JSON.parse(localStorage.getItem(key) || "null");
+    const value = JSON.parse(localStorage.getItem(storageKey(key)) || "null");
     return Array.isArray(value) ? value : fallback;
   } catch (error) {
     return fallback;
@@ -53,7 +77,8 @@ function readJson(key, fallback) {
 }
 
 function writeJson(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  try { localStorage.setItem(storageKey(key), JSON.stringify(value)); if(window.queueCloudSave)window.queueCloudSave(); return true; }
+  catch (error) { toast("保存失败，请立即导出备份，并检查浏览器存储空间。"); return false; }
 }
 
 function escapeHtml(value) {
@@ -90,6 +115,10 @@ function normalizeHistory(item, index) {
     dateKey: item.dateKey || "",
     category: item.category || "",
     source: item.source || "",
+    note: String(item.note || "").slice(0,280),
+    memoryMood: ["舒服","开心","平静","一般般"].includes(item.memoryMood) ? item.memoryMood : "",
+    filter: ["rest","outside","fun","useful","connect"].includes(item.filter) ? item.filter : "",
+    mood: String(item.mood || "").slice(0,20),
     completed: Boolean(item.completed)
   };
 }
@@ -103,7 +132,9 @@ const todayKey = () => {
   ].join("-");
 };
 
-let selectedDate = localStorage.getItem(STORAGE_KEYS.selectedDate) || todayKey();
+let selectedDate = todayKey();
+let drawing = false;
+let returnFocus = null;
 let tasks = readJson(STORAGE_KEYS.tasks, []).map(normalizeTask).filter(Boolean);
 let history = readJson(STORAGE_KEYS.history, []).map(normalizeHistory).filter(Boolean);
 let sound = false;
@@ -111,21 +142,20 @@ let currentFilter = "all";
 let lastPick = null;
 let pendingPick = null;
 let currentPage = "today";
-let drawSource = localStorage.getItem(STORAGE_KEYS.drawSource) || "all";
+let drawSource = localStorage.getItem(storageKey(STORAGE_KEYS.drawSource)) || "all";
 let editingTaskId = null;
 let editingHistoryId = null;
 let historySelectMode = false;
 let selectedHistoryIds = new Set();
-
-writeJson(STORAGE_KEYS.tasks, tasks);
-writeJson(STORAGE_KEYS.history, history);
 
 function saveTasks() {
   writeJson(STORAGE_KEYS.tasks, tasks);
 }
 
 function saveHistory() {
-  writeJson(STORAGE_KEYS.history, history);
+  const saved = writeJson(STORAGE_KEYS.history, history);
+  if (saved && typeof renderLife === "function") renderLife();
+  return saved;
 }
 
 function friendlyDate(key) {
@@ -134,12 +164,12 @@ function friendlyDate(key) {
   if (year === now.getFullYear() && month === now.getMonth() + 1 && day === now.getDate()) {
     return `今天 · ${month}月${day}日`;
   }
-  return `${month}月${day}日`;
+  return `${year}年${month}月${day}日`;
 }
 
 function updateDateUI() {
   $("#todayDate").textContent = friendlyDate(selectedDate);
-  $("#mainTitle").textContent = selectedDate === todayKey() ? "今天做什么？" : "那天做什么？";
+  $("#mainTitle").textContent = selectedDate === todayKey() ? "随心" : "那天的小选择";
   $("#backToday").style.display = selectedDate === todayKey() ? "none" : "block";
 }
 
@@ -210,7 +240,7 @@ function updateSoundButton() {
 
 function startMusic() {
   sound = true;
-  localStorage.setItem(STORAGE_KEYS.sound, "on");
+  localStorage.setItem(storageKey(STORAGE_KEYS.sound), "on");
   clearInterval(musicTimer);
   musicStep = 0;
   getAudioContext();
@@ -221,7 +251,7 @@ function startMusic() {
 
 function stopMusic() {
   sound = false;
-  localStorage.setItem(STORAGE_KEYS.sound, "off");
+  localStorage.setItem(storageKey(STORAGE_KEYS.sound), "off");
   clearInterval(musicTimer);
   musicTimer = null;
   updateSoundButton();
@@ -236,8 +266,9 @@ function switchPage(name) {
   $$(".page").forEach((page) => page.classList.toggle("active", page.id === `page-${name}`));
   $$(".tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.page === name));
   if (name === "history") renderHistory();
+  if (name === "life" && typeof renderLife === "function") renderLife();
   if (name === "things") renderTasks();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
 }
 
 function renderTasks() {
@@ -284,6 +315,7 @@ function addTask() {
   const category = $("#category").value;
   const text = input.value.trim();
   if (!text) return;
+  if (text.length > 80) { toast("给这件小事取个短一点的名字吧（80 字以内）"); return; }
 
   tasks.unshift({
     id: makeId("t"),
@@ -329,6 +361,8 @@ function closeTaskEditor() {
 }
 
 function deleteTask(id) {
+  const removed = tasks.filter(task => String(task.id) === String(id));
+  offerUndo(() => { tasks = removed.concat(tasks.filter(task => !removed.some(old => String(old.id) === String(task.id)))) ; saveTasks(); renderTasks(); });
   tasks = tasks.filter((task) => String(task.id) !== String(id));
   if (String(editingTaskId) === String(id)) editingTaskId = null;
   saveTasks();
@@ -360,7 +394,7 @@ function renderHistory() {
       <div class="history-main">
         <div class="history-text">
           <b>${escapeHtml(item.text)}</b>
-          <small>${escapeHtml(item.date)}</small>
+          <small>${escapeHtml(item.dateKey ? friendlyDate(item.dateKey) : item.date)}</small>
         </div>
         <div class="history-actions ${historySelectMode ? "hidden" : ""}">
           <button class="history-action complete" type="button" data-history-action="complete">${item.completed ? "↩ 取消完成" : "✓ 已完成"}</button>
@@ -440,6 +474,8 @@ function toggleHistoryComplete(id) {
 }
 
 function deleteHistory(id) {
+  const removed = history.filter(item => String(item.id) === String(id));
+  offerUndo(() => { history = history.concat(removed).sort((a,b) => (b.dateKey || "").localeCompare(a.dateKey || "")); saveHistory(); renderHistory(); });
   history = history.filter((item) => String(item.id) !== String(id));
   if (String(editingHistoryId) === String(id)) editingHistoryId = null;
   selectedHistoryIds.delete(String(id));
@@ -483,6 +519,8 @@ function completeSelectedHistory() {
 
 function deleteSelectedHistory() {
   if (!selectedHistoryIds.size) return;
+  const removed = history.filter(item => selectedHistoryIds.has(String(item.id)));
+  offerUndo(() => { history = history.concat(removed).sort((a,b) => (b.dateKey || "").localeCompare(a.dateKey || "")); saveHistory(); renderHistory(); });
   history = history.filter((item) => !selectedHistoryIds.has(String(item.id)));
   selectedHistoryIds.clear();
   editingHistoryId = null;
@@ -502,7 +540,7 @@ function pool(filter = "all") {
 
   if (filter !== "all") {
     const filtered = base.filter((item) => item.filter === filter || item.category === filter);
-    if (filtered.length) return filtered;
+    return filtered;
   }
   return base;
 }
@@ -522,6 +560,7 @@ function showResult(item) {
   beep();
   $("#resultTitle").textContent = item.text;
   $("#resultTag").textContent = catNames[item.category] || "🌷 今天的小选择";
+  if (typeof prepareResultMemory === "function") prepareResultMemory();
   $("#result").classList.remove("hidden");
 
   $("#petTip").textContent = "我帮你选好啦！嘿嘿 🌷";
@@ -537,27 +576,35 @@ function acceptCurrentPick() {
     dateKey: selectedDate,
     category: pendingPick.category || "",
     source: pendingPick.source || "",
+    filter: pendingPick.filter || "",
+    mood: typeof selectedMood !== "undefined" ? selectedMood : "",
+    note: "", memoryMood: "",
     completed: false
   });
-  history = history.slice(0, 50);
+  toast("已收好这个小选择，慢慢来就好 🌷");
   pendingPick = null;
   saveHistory();
   renderHistory();
 }
 
 function draw() {
+  if (drawing) return;
   const item = pick();
   if (!item) {
     if (drawSource === "mine") {
-      alert("🌱 你的事情还没有添加哦，先去「我的事情」添加一个吧～");
+      toast(tasks.length ? "这个心情下还没有匹配的事情，试试其他心情吧。" : "先去「我的事情」放入一两件想做的事吧 🌱");
     } else {
-      alert("这里暂时没有可以抽的事情～");
+      toast("暂时没有匹配的事情，试试其他心情吧。");
     }
     return;
   }
 
+  drawing = true;
+  returnFocus = document.activeElement;
+  $("#drawCard").disabled = true;
+  $("#againBtn").disabled = true;
   const card = $("#drawCard");
-  if (card) {
+  if (card && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
     card.animate(
       [
         { transform: "rotate(0)" },
@@ -568,7 +615,13 @@ function draw() {
       { duration: 480, easing: "ease-out" }
     );
   }
-  setTimeout(() => showResult(item), 330);
+  setTimeout(() => {
+    drawing = false;
+    $("#drawCard").disabled = false;
+    $("#againBtn").disabled = false;
+    showResult(item);
+    $("#doneBtn").focus();
+  }, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 330);
 }
 
 function updateDrawSourceUI() {
@@ -582,12 +635,12 @@ $("#datePicker").value = selectedDate;
 $("#datePicker").addEventListener("change", (event) => {
   if (!event.target.value) return;
   selectedDate = event.target.value;
-  localStorage.setItem(STORAGE_KEYS.selectedDate, selectedDate);
+  localStorage.setItem(storageKey(STORAGE_KEYS.selectedDate), selectedDate);
   updateDateUI();
 });
 $("#backToday").addEventListener("click", () => {
   selectedDate = todayKey();
-  localStorage.setItem(STORAGE_KEYS.selectedDate, selectedDate);
+  localStorage.setItem(storageKey(STORAGE_KEYS.selectedDate), selectedDate);
   $("#datePicker").value = selectedDate;
   updateDateUI();
 });
@@ -598,7 +651,7 @@ $$(".tab").forEach((tab) => {
 
 $("#addBtn").addEventListener("click", addTask);
 $("#taskInput").addEventListener("keydown", (event) => {
-  if (event.key === "Enter") addTask();
+  if (event.key === "Enter" && !event.isComposing) addTask();
 });
 
 $("#taskList").addEventListener("click", (event) => {
@@ -613,17 +666,13 @@ $("#taskList").addEventListener("click", (event) => {
   if (button.dataset.taskAction === "close-edit") closeTaskEditor();
 });
 
-$("#taskList").addEventListener("input", (event) => {
-  if (event.target.id === "inlineTaskInput") updateEditingTask();
-});
 
-$("#taskList").addEventListener("change", (event) => {
-  if (event.target.id === "inlineTaskCategory") updateEditingTask();
-});
+
+
 
 $("#taskList").addEventListener("keydown", (event) => {
   if (event.target.id !== "inlineTaskInput") return;
-  if (event.key === "Enter") {
+  if (event.key === "Enter" && !event.isComposing) {
     event.preventDefault();
     closeTaskEditor();
   }
@@ -690,24 +739,27 @@ $("#againBtn").addEventListener("click", draw);
 $("#closeResult").addEventListener("click", () => {
   pendingPick = null;
   $("#result").classList.add("hidden");
+  returnFocus?.focus();
 });
 $("#doneBtn").addEventListener("click", () => {
   acceptCurrentPick();
   $("#result").classList.add("hidden");
+  returnFocus?.focus();
   beep();
 });
 
 $$(".want-chip").forEach((button) => {
   button.addEventListener("click", () => {
-    currentFilter = button.dataset.filter;
-    draw();
+    currentFilter = currentFilter === button.dataset.filter ? "all" : button.dataset.filter;
+    $$(".want-chip").forEach(chip => { const active = chip.dataset.filter === currentFilter; chip.classList.toggle("active", active); chip.setAttribute("aria-pressed", String(active)); });
+    $("#filterHint").textContent = currentFilter === "all" ? "所有心情都可以，选一个小小的开始" : `正在挑选：${button.textContent.trim()}`;
   });
 });
 
 $$(".source-option").forEach((button) => {
   button.addEventListener("click", () => {
     drawSource = button.dataset.source;
-    localStorage.setItem(STORAGE_KEYS.drawSource, drawSource);
+    localStorage.setItem(storageKey(STORAGE_KEYS.drawSource), drawSource);
     updateDrawSourceUI();
   });
 });
@@ -723,8 +775,8 @@ const petBubble = $("#petBubble");
 const petPlay = $("#petPlay");
 const petFeed = $("#petFeed");
 
-let petMood = Number(localStorage.getItem(STORAGE_KEYS.petMood) || 70);
-let petAffection = Number(localStorage.getItem(STORAGE_KEYS.petAffection) || 0);
+let petMood = Number(localStorage.getItem(storageKey(STORAGE_KEYS.petMood)) || 70);
+let petAffection = Number(localStorage.getItem(storageKey(STORAGE_KEYS.petAffection)) || 0);
 
 const petLines = {
   tap: ["嘿！摸到我啦～", "被发现了！", "再摸一下嘛～", "今天也来陪我玩呀"],
@@ -735,7 +787,8 @@ const petLines = {
 
 function petSay(type = "tap") {
   if (!petBubble) return;
-  const lines = petLines[type] || petLines.tap;
+  const special = window.soloPetLine ? window.soloPetLine(type) : null;
+  const lines = special ? [special] : petLines[type] || petLines.tap;
   petBubble.textContent = lines[Math.floor(Math.random() * lines.length)];
   petBubble.classList.add("show");
   clearTimeout(window.petBubbleTimer);
@@ -745,8 +798,10 @@ function petSay(type = "tap") {
 }
 
 function savePet() {
-  localStorage.setItem(STORAGE_KEYS.petMood, String(petMood));
-  localStorage.setItem(STORAGE_KEYS.petAffection, String(petAffection));
+  localStorage.setItem(storageKey(STORAGE_KEYS.petMood), String(petMood));
+  localStorage.setItem(storageKey(STORAGE_KEYS.petAffection), String(petAffection));
+  updatePetStatus();
+  if(window.queueCloudSave)window.queueCloudSave();
 }
 
 function petBounce() {
@@ -760,6 +815,7 @@ if (pet) {
   pet.addEventListener("click", () => {
     petBounce();
     petSay("tap");
+    updatePetStatus();
     petAffection += 1;
     petMood = Math.min(100, petMood + 1);
     savePet();
@@ -839,3 +895,78 @@ renderTasks();
 renderHistory();
 updateSoundButton();
 updateDateUI();
+
+
+function updatePetStatus() {
+  const level = petAffection >= 100 ? '默契搭子' : petAffection >= 30 ? '熟悉的朋友' : '初见的小伙伴';
+  $('#petStatus').textContent = `${level} · 一起积攒了 ${petAffection} 份暖意`;
+  if(window.renderSolo)window.renderSolo();
+}
+let toastTimer;
+function toast(message) {
+  const box = $('#toast');
+  if (!box) return;
+  box.textContent = message; box.classList.remove('hidden');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => box.classList.add('hidden'), 5000);
+}
+let undoTimer;
+function offerUndo(action) {
+  clearTimeout(undoTimer);
+  $('#undoBar').classList.remove('hidden');
+  $('#undoBtn').onclick = () => { action(); clearTimeout(undoTimer); $('#undoBar').classList.add('hidden'); toast('已经恢复啦'); };
+  undoTimer = setTimeout(() => $('#undoBar').classList.add('hidden'), 7000);
+}
+$('#exportBtn').onclick = () => {
+  const blob = new Blob([JSON.stringify({app:'suixin',version:2,exportedAt:new Date().toISOString(),tasks,history,petAffection,petMood,soloPet:window.readSoloPet?window.readSoloPet():null},null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob); const link = document.createElement('a');
+  link.href = url; link.download = `随心备份-${todayKey()}.json`; link.click(); setTimeout(() => URL.revokeObjectURL(url),1000);
+};
+$('#importBtn').onclick = () => $('#importFile').click();
+$('#importFile').onchange = async event => {
+  const file = event.target.files[0]; if (!file) return;
+  try {
+    if (file.size > 5 * 1024 * 1024) throw Error('备份文件过大，请选择 5MB 以内的文件');
+    const data = JSON.parse(await file.text());
+    if (data.app !== 'suixin' || !Array.isArray(data.tasks) || !Array.isArray(data.history)) throw Error('这不是随心的备份文件');
+    const valid = item => item && typeof item.text === 'string' && item.text.trim() && item.text.length <= 80;
+    if (!data.tasks.every(valid) || !data.history.every(valid)) throw Error('备份内容不完整，未导入');
+    const merge = (existing, incoming, normalize) => {
+      const ids = new Set(existing.map(item => String(item.id)));
+      return existing.concat(incoming.map(normalize).filter(item => item && !ids.has(String(item.id)) && ids.add(String(item.id))));
+    };
+    const nextTasks = merge(tasks, data.tasks, normalizeTask), nextHistory = merge(history, data.history, normalizeHistory);
+    if (!writeJson(STORAGE_KEYS.tasks, nextTasks)) return;
+    tasks = nextTasks;
+    if (!writeJson(STORAGE_KEYS.history, nextHistory)) { renderTasks(); return; }
+    history = nextHistory; if(data.soloPet&&window.restoreSoloPet)window.restoreSoloPet(data.soloPet); renderTasks(); renderHistory(); if(typeof renderLife === "function") renderLife(); toast('备份已合并，你原有的记录也保留着 🌷');
+  } catch(error) { toast(error.message || '导入失败，请检查备份文件'); }
+  finally { event.target.value = ''; }
+};
+$('#shareBtn').onclick = () => shareContent({
+  title:'随心 · 今天做什么？',
+  text:`今天我想：${lastPick ? lastPick.text : '让一点点运气，帮自己做个小决定'}。来「随心」，找一件想做的小事 🌷`,
+  url:location.href.split('#')[0]
+});
+let installPrompt;
+window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); installPrompt = event; $('#installBtn').textContent = '安装随心'; });
+$('#installBtn').onclick = async () => {
+  if (installPrompt) { await installPrompt.prompt(); installPrompt = null; }
+  else toast('在手机浏览器菜单中选择“添加到主屏幕”。iPhone 请用 Safari 的分享菜单。');
+};
+document.addEventListener('keydown', event => {
+  if (document.querySelector('dialog[open]') || $('#result').classList.contains('hidden')) return;
+  if(event.key === 'Escape') { $('#closeResult').click(); returnFocus?.focus(); }
+  if(event.key === 'Tab') {
+    const buttons = [...$('#result').querySelectorAll('button:not(:disabled)')];
+    const first = buttons[0], last = buttons[buttons.length-1];
+    if(event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if(!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  }
+});
+$('#pet').tabIndex = 0;
+$('#pet').addEventListener('keydown', event => { if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); $('#pet').click(); } });
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden && audioContext) audioContext.suspend();
+  else if(!document.hidden && sound && audioContext) audioContext.resume();
+});
+updatePetStatus();

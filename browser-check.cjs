@@ -1,0 +1,76 @@
+const {chromium,launchOptions}=require('./browser-runtime.cjs');
+const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const root=__dirname;
+const server=http.createServer((req,res)=>{const file=path.join(root,decodeURIComponent(new URL(req.url,'http://localhost').pathname === '/' ? '/index.html' : new URL(req.url,'http://localhost').pathname));if(!file.startsWith(root+path.sep)){res.writeHead(403);return res.end();}fs.readFile(file,(err,buf)=>{if(err){res.writeHead(404);return res.end();}res.setHeader('Content-Type',({'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.png':'image/png','.svg':'image/svg+xml'})[path.extname(file)]||'application/octet-stream');res.end(buf);});});
+(async()=>{let browser;try{
+await new Promise(resolve=>server.listen(8080,'127.0.0.1',resolve));
+browser=await chromium.launch(launchOptions());
+const page=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'});
+const errors=[];page.on('pageerror',err=>errors.push(err.message));
+await page.goto('http://127.0.0.1:8080');
+await page.locator('[data-mood="outside"]').click();await page.locator('#drawCard').click();await page.locator('#resultMemoryBtn').click();
+await page.locator('#momentNote').fill('风很舒服，今天发现一条新小路。');await page.locator('[data-memory-mood="舒服"]').click();await page.locator('#momentForm button[type=submit]').click();
+await page.locator('#page-life.active').waitFor();assert.match(await page.locator('#momentList').innerText(),/风很舒服/);assert.match(await page.locator('#roomItems').innerText(),/窗边的叶子/);
+await page.reload();await page.locator('[data-page=life]').click();assert.match(await page.locator('#momentList').innerText(),/风很舒服/);
+await page.locator('#writeMoment').click();await page.locator('#momentNote').fill('普通的一天，也值得收好。');await page.locator('#momentForm button[type=submit]').click();
+assert.match(await page.locator('#momentCount').innerText(),/2/);
+await page.locator('[data-page=friends]').click();await page.locator('#friendMessage').fill('周末一起去喝杯茶？🌷');await page.locator('#friendName').fill('小随');await page.locator('#makeFriendCard').click();
+const link=await page.locator('#friendLink').inputValue();await page.goto(link);await page.locator('#receivedCard[open]').waitFor();assert.equal(await page.locator('#receivedText').isVisible(),false);await page.locator('#revealCard').click();assert.equal(await page.locator('#receivedText').innerText(),'周末一起去喝杯茶？🌷');
+await page.locator('#closeReceived').click();await page.locator('[data-page=today]').click();
+await page.locator('#toast').waitFor({state:'hidden'});
+await page.screenshot({path:'release/today-preview.png',fullPage:false});
+await page.locator('[data-page=life]').click();await page.screenshot({path:'release/life-preview.png',fullPage:true});
+assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth),true,'mobile horizontal overflow');
+await page.setViewportSize({width:320,height:700});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth),true,'small mobile horizontal overflow');
+const invalid=await page.evaluate(()=>{try{parseFriendCard('#gift=%not-json');return false}catch{return true}});assert.equal(invalid,true);
+const roundTrip=await page.evaluate(()=>normalizeHistory({text:'测试',note:'保留笔记',memoryMood:'舒服',filter:'outside'},0));assert.equal(roundTrip.note,'保留笔记');assert.equal(roundTrip.filter,'outside');
+const shareChecks = await page.evaluate(async () => {
+  const check = (ok, message) => { if(!ok) throw Error(message); };
+  const original = ['share','canShare','clipboard'].map(key => [key,Object.getOwnPropertyDescriptor(navigator,key)]);
+  const set = (key,value) => Object.defineProperty(navigator,key,{configurable:true,value});
+  let copied=[],native=[];
+  try {
+    for(const url of ['http://127.0.0.1:8080/#gift=x','http://localhost/','http://192.168.1.5/','http://172.16.1.2/','http://10.0.0.1/','file:///test','http://[::1]/']) check(publicShareUrl(url)==='', 'local URL must not escape');
+    check(publicShareUrl('https://example.com/#gift=test')==='https://example.com/#gift=test','public gift fragment preserved');
+    set('clipboard',{writeText:async text=>copied.push(text)});
+    set('canShare',()=>true);
+    set('share',async payload=>{native.push(payload);throw new DOMException('denied','NotAllowedError')});
+    await shareContent({title:'test',text:'小邀请',url:'https://example.com/#gift=test'});
+    check(copied.length===1 && copied[0].includes('#gift=test'),'failed sheet copies public card');
+    set('share',undefined);copied=[];
+    await shareContent({title:'test',text:'小邀请',url:'http://127.0.0.1:8080/#gift=private'});
+    check(copied[0]==='小邀请','local shares only text');
+    set('share',async()=>{throw new DOMException('cancel','AbortError')});copied=[];
+    await shareContent({title:'test',text:'cancel',url:'https://example.com/'});
+    check(copied.length===0 && !document.querySelector('#shareDialog').open,'cancel must not copy or open dialog');
+    set('canShare',()=>false);native=[];
+    set('share',async value=>native.push(value));
+    await shareContent({title:'test',text:'unsupported',url:'https://example.com/'});
+    check(native.length===0 && copied.length===1,'canShare false skips sheet');
+    set('clipboard',{writeText:async()=>{throw new DOMException('denied','NotAllowedError')}});
+    await shareContent({title:'test',text:'手动复制',url:'https://example.com/'});
+    check(document.querySelector('#shareDialog').open,'clipboard denied opens manual dialog');
+    check(document.querySelector('#shareCopyText').value.includes('手动复制'),'manual text available');
+    document.querySelector('#shareDialog').close();
+    set('clipboard',undefined);
+    await shareContent({title:'test',text:'没有剪贴板',url:'file:///test',copyOnly:true});
+    check(document.querySelector('#shareDialog').open && document.querySelector('#shareHelp').textContent.includes('本机'),'absent clipboard supports local manual copy');
+    document.querySelector('#shareDialog').close();
+    return true;
+  } finally { for(const [key,descriptor] of original) { if(descriptor)Object.defineProperty(navigator,key,descriptor);else delete navigator[key]; } }
+});
+assert.equal(shareChecks,true);
+// Exercise both actual UI entry points with clipboard and native sharing unavailable.
+await page.evaluate(()=>{Object.defineProperty(navigator,'share',{configurable:true,value:undefined});Object.defineProperty(navigator,'clipboard',{configurable:true,value:undefined});});
+await page.locator('[data-page=friends]').click();await page.locator('#friendMessage').fill('分享回退测试');await page.locator('#makeFriendCard').click();await page.locator('#sendFriendCard').click();await page.locator('#shareDialog[open]').waitFor();assert.match(await page.locator('#shareCopyText').inputValue(),/分享回退测试/);assert.doesNotMatch(await page.locator('#shareCopyText').inputValue(),/127\.0\.0\.1/);await page.locator('#closeShareDialog').click();
+await page.locator('#friendMessage').fill('修改邀请');await page.locator('#friendOutput').waitFor({state:'hidden',timeout:3000}).catch(async error=>{console.log('DIAGNOSTIC',errors,await page.locator('#friendOutput').getAttribute('class'),await page.locator('#friendMessage').inputValue());throw error;});
+await page.locator('[data-page=today]').click();await page.locator('#drawCard').click();await page.locator('#shareBtn').click();await page.locator('#shareDialog[open]').waitFor();assert.match(await page.locator('#shareCopyText').inputValue(),/今天我想/);await page.locator('#closeShareDialog').click();await page.locator('#closeResult').click();
+assert.deepEqual(errors,[]);console.log('PASS: life experience regression; sharing fallback, blocked and missing clipboard, cancellation, unsupported payload, local URL exclusion, both share buttons, stale-card invalidation; no page errors.');
+await page.locator('#guideNext').click();await page.locator('[data-mood=tired]').click();await page.locator('#guideNext').click();await page.locator('#resultMemoryBtn').click();await page.locator('#momentNote').fill('第一次自己体验，今天也可以慢慢来。');await page.locator('#momentForm button[type=submit]').click();
+await page.locator('#adoptSoloPet').click();await page.locator('#editSoloLook').click();await page.locator('#petStudio[open]').waitFor();assert.equal(await page.locator('#petKinds button').count(),2);await page.locator('[data-kind=glasses]').click();await page.locator('#petPhoto').setInputFiles('assets/pets/cat.png');await page.locator('#petPhotoPreview:not(.hidden)').waitFor();assert.equal(await page.locator('#generatePet').isDisabled(),true);await page.screenshot({path:'release/pet-studio-preview.png',fullPage:false});await page.locator('#applyPetLook').click();await page.locator('#soloPetName').fill('棉花');await page.locator('#soloPersonality').selectOption('curious');await page.locator('#soloPetForm button[type=submit]').click();await page.locator('#soloPetDialog').waitFor({state:'hidden'});assert.equal(await page.evaluate(()=>window.readSoloPet().name),'棉花');assert.equal(await page.evaluate(()=>window.readSoloPet().appearance.kind),'glasses');assert.match(await page.locator('#pet img').getAttribute('src'),/glasses.webp/);assert.match(await page.locator('#soloDescription').innerText(),/好奇探险/);
+await page.locator('#lifeSearch').fill('第一次自己体验');assert.equal(await page.locator('#momentList .moment-card').count(),1);await page.locator('#lifeSearch').fill('完全没有这段内容');assert.equal(await page.locator('#momentList .moment-card').count(),0);await page.locator('#clearLifeSearch').click();assert.ok(await page.locator('#momentList .moment-card').count()>=3);
+await page.goto('http://127.0.0.1:8080/');await page.locator('#accountBtn').waitFor({state:'visible'});assert.equal(await page.evaluate(()=>window.readSoloPet().name),'棉花');assert.equal(await page.locator('#guideCard').isVisible(),false);await page.locator('#toast').waitFor({state:'hidden'});await page.setViewportSize({width:390,height:844});await page.screenshot({path:'release/home-preview.png',fullPage:false});assert.deepEqual(errors,[]);console.log('PASS: real onboarding, guest solo adoption/personality, persistent pet profile, search/clear without deleting records, and completed-guide persistence.');
+await page.goto('http://127.0.0.1:8080/open-pet.html');await page.locator('#soloPetDialog[open]').waitFor();assert.equal(await page.locator('#soloPetName').inputValue(),'棉花');await page.locator('#closeSoloPet').click();assert.match(await page.locator('#soloName').innerText(),/单人养宠/);await page.locator('#soloCompanion').screenshot({path:'release/solo-entry-preview.png'});
+await require('./social-browser-check.cjs').runSocialChecks(browser);
+}finally{if(browser)await browser.close();server.close();}})().catch(err=>{console.error(err);process.exitCode=1;});
+

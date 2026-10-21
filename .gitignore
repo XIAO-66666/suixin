@@ -1,0 +1,17 @@
+data/
+__pycache__/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+node_modules/
+.github-review/
+deploy-*/
+release/
+assets/pets/*.png
+*.pyc
+.DS_Store
