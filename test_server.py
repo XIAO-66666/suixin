@@ -36,6 +36,9 @@ class Client:
 
 
 class SocialAPI(unittest.TestCase):
+    def test_public_health_check_does_not_expose_account_data(self):
+        self.assertEqual(self.a.call('/api/health'),(200,{'ok':True}))
+
     def test_pet_studio_private_media_and_shared_approval(self):
         import base64
         a,b=self.connect_friends();c=self.c.register('carol')

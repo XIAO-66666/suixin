@@ -9,6 +9,6 @@ with ZipFile(output / 'suixin-web.zip', 'w', ZIP_DEFLATED) as archive:
         archive.write(root / name, name)
 print(output / 'suixin-web.zip')
 with ZipFile(output / 'suixin-server.zip', 'w', ZIP_DEFLATED) as archive:
-    for name in files + ['server.py', 'features.py', 'experience.py', 'pet_studio.py', 'SERVER.md', 'PET-STUDIO.md']:
+    for name in files + ['server.py', 'features.py', 'experience.py', 'pet_studio.py', 'deploy.py', 'render.yaml', 'DEPLOY.md', 'SERVER.md', 'PET-STUDIO.md']:
         archive.write(root / name, name)
 print(output / 'suixin-server.zip')

@@ -44,6 +44,8 @@ Windows 会优先使用已安装的 Edge；也可用 `SUIXIN_BROWSER_PATH` 指�
 
 ## 发布
 
+公网后台与完整网址的部署说明见 [DEPLOY.md](DEPLOY.md)。仓库提供 Render 配置，需先连接自己的托管账号，并确认付费服务与持久磁盘费用；仅提交配置不会创建云端资源。
+
 ```sh
 python package_release.py
 ```

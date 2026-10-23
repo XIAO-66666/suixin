@@ -245,6 +245,9 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(500, {'error':'服务暂时有点忙，请稍后再试'})
 
     def api_get(self, db):
+        if self.route == '/api/health':
+            db.execute('SELECT 1').fetchone()
+            return self.reply(200, {'ok':True})
         if self.route == '/api/me':
             me = self.user(db, False)
             return self.reply(200, {'user':public_user(me) if me else None})

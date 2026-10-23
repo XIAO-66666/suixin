@@ -1,0 +1,21 @@
+# Prepared configuration only. Deploying creates a paid web service and disk.
+# Review and approve the platform's current quote before creating resources.
+services:
+  - type: web
+    name: suixin
+    runtime: python
+    plan: starter
+    numInstances: 1
+    buildCommand: python --version
+    startCommand: python deploy.py
+    healthCheckPath: /api/health
+    autoDeployTrigger: "off"
+    disk:
+      name: suixin-data
+      mountPath: /var/data/suixin
+      sizeGB: 1
+    envVars:
+      - key: SUIXIN_DB_PATH
+        value: /var/data/suixin/suixin.sqlite3
+      - key: PYTHONUNBUFFERED
+        value: "1"
